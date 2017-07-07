@@ -1,6 +1,6 @@
 <?php
 add_action( 'init', 'create_event_cpt' ,0);
-add_action( 'cmb2_admin_init', 'metaboxes' );
+add_action( 'cmb2_admin_init', 'metabox' );
 
 // Register Custom Post Type Event
 // Post Type Key: event
@@ -57,11 +57,10 @@ function create_event_cpt() {
 		'capability_type' => 'post',
 	);
 	register_post_type( 'simple_event', $args );
-
 }
 
-// Define the metabox and field configurations
-function metaboxes() {
+
+function metabox() {
 	$prefix = '_se_';
 	
 	$cmb = new_cmb2_box( array(
@@ -70,8 +69,6 @@ function metaboxes() {
 		'object_types' => array( 'simple_event', ), // Post type
 		'context'      => 'normal',
 		'priority'     => 'high'
-		// 'cmb_styles' => false, // false to disable the CMB stylesheet
-		// 'closed'     => true, // Keep the metabox closed by default
 	) );
 	$cmb->add_field( array(
 		'name'        => __( 'Start Date', 'simple-event' ),
@@ -94,9 +91,6 @@ function metaboxes() {
 		'type'        => 'text_time'
 	) );
 }
-
-
-
 
 
 add_filter( 'manage_simple_event_posts_columns', 'event_column_register' );
@@ -133,7 +127,6 @@ function event_end_date_column_display( $column_name, $post_id ) {
 
     echo date('d/m/Y', $end_date);;
 }
-// Display the column content
 function event_time_column_display( $column_name, $post_id ) {
     if ( '_se_time' != $column_name )
         return;
