@@ -40,7 +40,7 @@ function create_event_cpt() {
 		'description' => __( '', 'simple-event' ),
 		'labels' => $labels,
 		'menu_icon' => 'dashicons-admin-post',
-		'supports' => array('title'),
+		'supports' => array(''),
 		'taxonomies' => array(),
 		'public' => true,
 		'show_ui' => true,
@@ -55,9 +55,23 @@ function create_event_cpt() {
 		'show_in_rest' => true,
 		'publicly_queryable' => true,
 		'capability_type' => 'post',
+		'rewrite' => array(
+            'slug' => '/simple_event',
+            'feeds' => false
+        )
 	);
 	register_post_type( 'simple_event', $args );
 }
+
+function event_links($post_link, $post = 0) {
+    if($post->post_type === 'simple_event') {
+        return home_url('simple_event/' . $post->ID . '/');
+    }
+    else{
+        return $post_link;
+    }
+}
+add_filter('post_type_link', 'event_links', 1, 3);
 
 
 function metabox() {
@@ -69,6 +83,16 @@ function metabox() {
 		'object_types' => array( 'simple_event', ), // Post type
 		'context'      => 'normal',
 		'priority'     => 'high'
+	) );
+	$cmb->add_field( array(
+		'name'    => 'Title',
+		'desc'    => 'Must enter the title. <strong>This will be displayed everywhere!</strong>',
+		'id'      => $prefix.'title',
+		'type'    => 'wysiwyg',
+		'options' => array(
+			'textarea_rows' => 2,
+			'media_buttons' => false,
+		),
 	) );
 	$cmb->add_field( array(
 		'name'        => __( 'Start Date', 'simple-event' ),
@@ -94,39 +118,132 @@ function metabox() {
 
 
 add_filter( 'manage_simple_event_posts_columns', 'event_column_register' );
+add_action( 'manage_simple_event_posts_custom_column', 'title_column_display', 10, 2);
+add_action( 'manage_simple_event_posts_custom_column', 'display_column_display', 10, 2);
+add_action( 'manage_simple_event_posts_custom_column', 'display_until_column_display', 10, 2);
 add_action( 'manage_simple_event_posts_custom_column', 'event_start_date_column_display', 10, 2);
 add_action( 'manage_simple_event_posts_custom_column', 'event_end_date_column_display', 10, 2);
 add_action( 'manage_simple_event_posts_custom_column', 'event_time_column_display', 10, 2);
+
 // Register the column
 function event_column_register( $columns ) {
+	$columns['_se_title'] = 'Event Title';
+	$columns['display'] = 'Display';
+	$columns['display_until'] = 'Display Until';
     $columns['_se_start_date'] = 'Start Date';
     $columns['_se_end_date'] = 'End Date';
     $columns['_se_time'] = 'Time';
+    unset($columns['title']);
     unset($columns['date']);
 
     return $columns;
 }
+
 // Display the column content
+
+function title_column_display( $column_name, $post_id ) {
+    if ( '_se_title' != $column_name )
+        return;
+	
+	$post               = get_post( $post_id );
+    $title              = get_post_meta($post_id, '_se_title', true);
+    $post_type_object   = get_post_type_object( $post->post_type );
+    $can_edit_post      = current_user_can( 'edit_post', $post->ID );
+	
+	echo '<strong><a class="row-title" href="' . get_edit_post_link( $post->ID, true ) . '" title="' . esc_attr( __( 'Edit this item' ) ) . '">' . $title . '</a></strong>';
+}
+
+function display_column_display( $column_name, $post_id ) {
+    if ( 'display' != $column_name )
+        return;
+
+    display_event($post_id);
+}
+function display_event($post_id) {
+	$title = get_post_meta($post_id, '_se_title', true);
+	$start_date = get_post_meta($post_id, '_se_start_date', true);
+	$end_date = get_post_meta($post_id, '_se_end_date', true);
+    $time = get_post_meta($post_id, '_se_time', true);
+    
+    if(!empty($time)) {
+    	$title = $title . ' @ ' . $time;
+    }
+    
+    //Date
+    // End date exists and on different day
+    if(!empty($end_date) && $start_date!=$end_date) {
+        //Same month
+        if(date('F',$start_date) == date('F',$end_date)) {
+            echo date('jS',$start_date);
+            echo ' - ';
+    	    echo date('jS F',$end_date);
+        }
+        else {  // Different month
+            echo date('jS F',$start_date);
+            echo ' - ';
+    	    echo date('jS F',$end_date);
+        }
+    }
+    else {  // Only start date exists
+        echo date('jS F',$start_date);
+    }
+    echo '<br />';
+    
+    //Title
+    echo $title;
+    echo '<br />';
+}
+
+function display_until_column_display( $column_name, $post_id ) {
+    if ( 'display_until' != $column_name )
+        return;
+
+    $start_date = get_post_meta($post_id, '_se_start_date', true);
+	$end_date = get_post_meta($post_id, '_se_end_date', true);
+	
+	$useThisDate = $start_date;
+	
+    if(!empty($end_date)) {
+    	$useThisDate = $end_date;
+    }
+    
+    if($useThisDate>=time()-86400) {
+    	echo date('jS F H:i:s',$useThisDate+86400);
+    	echo '<br/>Now: '.date('d/m H:i:s',time()).' (GMT)';
+    }
+    else {
+    	echo 'SHOULD NOT BE DISPLAYED';
+    }
+}
+
 function event_start_date_column_display( $column_name, $post_id ) {
     if ( '_se_start_date' != $column_name )
         return;
 
     $start_date = get_post_meta($post_id, '_se_start_date', true);
-    if ( !$start_date )
-        $start_date = '<em>Empty</em>';
-
-    echo date('d/m/Y', $start_date);
+    if ( !$start_date ) {
+    	$start_date = '<em>Empty</em>';
+    	echo $start_date;
+    }
+    else {
+    	echo date('d/m/Y', $start_date);
+    }
 }
+
 function event_end_date_column_display( $column_name, $post_id ) {
     if ( '_se_end_date' != $column_name )
         return;
 
     $end_date = get_post_meta($post_id, '_se_end_date', true);
-    if ( !$end_date )
-        $end_date = '<em>Not Provided</em>';
-
-    echo date('d/m/Y', $end_date);;
+    if ( !$end_date || empty($end_date) ) {
+    	$end_date = '<em>Not Provided</em>';
+    	echo $end_date;
+    }
+    else {
+    	echo date('d/m/Y', $end_date);
+    }    
 }
+
 function event_time_column_display( $column_name, $post_id ) {
     if ( '_se_time' != $column_name )
         return;
@@ -137,5 +254,10 @@ function event_time_column_display( $column_name, $post_id ) {
 
     echo $time;
 }
+
+
+
+
+
 
 ?>

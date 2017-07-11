@@ -24,12 +24,11 @@ class SimpleEvent {
     	 * Files to include on frontend and backend
     	 */
     	$includes = array(
-    		'/includes/types.php'
+    		'/includes/types.php',
+    		'/includes/shortcodes.php'
     	);
-    
-    	$admin_includes = array(
-    		//'/includes/CMB2/init.php' // Metaboxes
-    	);
+    	
+    	$admin_includes = array();
     	
     	if ( file_exists( dirname( __FILE__ ) . '/includes/cmb2/init.php' ) ) {
         	require_once dirname( __FILE__ ) . '/includes/cmb2/init.php';
