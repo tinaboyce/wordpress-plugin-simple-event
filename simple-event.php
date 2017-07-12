@@ -24,8 +24,10 @@ class SimpleEvent {
     	 * Files to include on frontend and backend
     	 */
     	$includes = array(
-    		'/includes/types.php',
-    		'/includes/shortcodes.php'
+    		'/includes/event-custom-post-type.php',
+    		'/includes/shortcodes.php',
+    		'/includes/display-helper.php',
+    		'/includes/query-helper.php'
     	);
     	
     	$admin_includes = array();
